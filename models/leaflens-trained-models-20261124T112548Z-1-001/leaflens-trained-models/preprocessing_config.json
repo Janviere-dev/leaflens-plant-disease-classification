@@ -1,0 +1,15 @@
+{
+    "architecture": "MobileNetV2",
+    "image_size": [
+        224,
+        224
+    ],
+    "color_mode": "RGB",
+    "input_range": [
+        -1,
+        1
+    ],
+    "preprocessing": "mobilenet_v2.preprocess_input",
+    "num_classes": 38,
+    "model_filename": "leaflens_final_model.keras"
+}
