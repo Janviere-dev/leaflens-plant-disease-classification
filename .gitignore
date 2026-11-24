@@ -2,3 +2,4 @@
 /data/cleaned_data/
 /data/plantvillage/
 /models/leaflens-trained-models/
+/tests/__pycache__/
