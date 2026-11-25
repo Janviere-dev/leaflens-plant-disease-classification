@@ -10,6 +10,7 @@ import streamlit as st
 
 from pages.prediction import render_prediction_page
 from pages.insights import render_insights_page
+from pages.retraining import render_retraining_page
 
 
 # Page configuration
@@ -263,9 +264,8 @@ elif page == "Dataset Insights":
 
 
 elif page == "Model Retraining":
-    st.title("🔄 Model Retraining")
-    st.info("Model retraining page is under development.")
-
+    render_retraining_page()
+    
 elif page == "Model Performance":
     st.title("📈 Model Performance")
     st.info("Model performance page is under development.")

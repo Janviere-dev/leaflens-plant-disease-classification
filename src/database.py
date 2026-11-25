@@ -99,6 +99,7 @@ def get_pending_images():
         cursor = connection.execute("""
             SELECT
                 id,
+                image,
                 original_filename,
                 crop,
                 disease,
