@@ -6,10 +6,19 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "datasets>=5.2.0",
+    "fastapi>=0.165.0",
     "matplotlib>=3.11.2",
     "numpy>=2.5.5",
     "pillow>=13.0.0",
+    "python-multipart>=0.0.34",
+    "requests>=2.34.2",
     "scikit-learn>=1.9.1",
     "streamlit>=1.67.0",
     "tensorflow>=2.21.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
 ]

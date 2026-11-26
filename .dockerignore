@@ -1,0 +1,24 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.ipynb_checkpoints
+
+# Large local data and model artifacts are mounted at runtime.
+data/
+models/
+
+# Local environment and secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Not required by the running application
+tests/
+notebooks/
+*.ipynb

@@ -261,10 +261,17 @@ def create_training_dataset(
         buffer_size=min(total_images, 10000),
         reshuffle_each_iteration=True,
     )
-
     combined_dataset = combined_dataset.batch(batch_size)
-    combined_dataset = combined_dataset.prefetch(tf.data.AUTOTUNE)
 
+    expected_batches = (
+        total_images + batch_size - 1
+        ) // batch_size
+
+    combined_dataset = combined_dataset.apply(
+        tf.data.experimental.assert_cardinality(expected_batches)
+        )
+
+    combined_dataset = combined_dataset.prefetch(tf.data.AUTOTUNE)
     return combined_dataset
 
 def create_retraining_model(learning_rate=1e-5):
@@ -362,6 +369,15 @@ def create_evaluation_dataset(dataset, batch_size=32):
     )
 
     evaluation_dataset = evaluation_dataset.batch(batch_size)
+
+    expected_batches = (
+        len(dataset) + batch_size - 1
+    ) // batch_size
+
+    evaluation_dataset = evaluation_dataset.apply(
+        tf.data.experimental.assert_cardinality(expected_batches)
+    )
+
     evaluation_dataset = evaluation_dataset.prefetch(
         tf.data.AUTOTUNE
     )

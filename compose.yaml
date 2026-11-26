@@ -1,0 +1,44 @@
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: leaflens-api
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: leaflens-streamlit
+    restart: unless-stopped
+    ports:
+      - "8502:8501"
+    environment:
+      LEAFLENS_API_URL: "http://api:8000"
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    depends_on:
+      api:
+        condition: service_healthy

@@ -1,25 +1,21 @@
-
 import io
-
 import streamlit as st
 from PIL import Image
 
 from src.model_loader import load_class_names
+
 from src.database import (
     initialize_database,
-    save_uploaded_image,
     get_pending_images,
     get_approved_images,
     update_image_status,
 )
 
-from src.retraining import (
-    load_retraining_data,
-    create_training_dataset,
-    create_evaluation_dataset,
-    train_retraining_model,
-    evaluate_retrained_model,
-    CANDIDATE_MODEL_PATH,
+from src.api_client import (
+    APIClientError,
+    upload_images_api,
+    start_retraining_api,
+    get_retraining_status_api,
 )
 
 
@@ -34,6 +30,8 @@ PRODUCTION_METRICS = {
 }
 
 
+# CLASS INFORMATION
+
 def get_class_details(class_names):
     """Convert model class names into crop and disease information."""
 
@@ -46,20 +44,23 @@ def get_class_details(class_names):
                 f"Invalid class name in class_names.json: {class_name}"
             )
 
-        crop, disease = class_name.split("___", 1)
+        raw_crop, raw_disease = class_name.split("___", 1)
 
         class_details.append({
             "index": index,
             "class_name": class_name,
-            "crop": crop.replace("_", " "),
-            "disease": disease.replace("_", " "),
+            "raw_crop": raw_crop,
+            "raw_disease": raw_disease,
+            "crop": raw_crop.replace("_", " "),
+            "disease": raw_disease.replace("_", " "),
         })
 
     return class_details
 
 
+# IMAGE UPLOAD SECTION
 def render_upload_section(class_details):
-    """Allow users to upload labelled plant images."""
+    """Allow users to upload multiple labelled plant images through the API."""
 
     st.subheader("Upload Training Images")
 
@@ -95,67 +96,176 @@ def render_upload_section(class_details):
         if item["disease"] == selected_disease
     )
 
-    uploaded_file = st.file_uploader(
-        "Upload plant image",
+    # Bulk image selection.
+    uploaded_files = st.file_uploader(
+        "Upload plant images",
         type=["jpg", "jpeg", "png"],
-        key="retraining_image",
+        accept_multiple_files=True,
+        key="retraining_images",
     )
 
-    image_bytes = None
+    valid_files = []
 
-    if uploaded_file is not None:
-
-        image_bytes = uploaded_file.getvalue()
-
-        try:
-            with Image.open(io.BytesIO(image_bytes)) as image:
-                image.verify()
-
-            with Image.open(io.BytesIO(image_bytes)) as image:
-                st.image(
-                    image.convert("RGB"),
-                    caption=uploaded_file.name,
-                    width=300,
-                )
-
-        except Exception:
-            st.error(
-                "This file is not a valid image. "
-                "Please upload a valid JPG, JPEG, or PNG image."
-            )
-            return
+    if uploaded_files:
 
         st.caption(
             f"Selected label: {selected_class['class_name']}"
         )
 
+        st.write(
+            f"Images selected: **{len(uploaded_files)}**"
+        )
+
+        st.markdown("**Image Preview**")
+
+        preview_columns = st.columns(2)
+
+        for index, uploaded_file in enumerate(uploaded_files):
+
+            image_bytes = uploaded_file.getvalue()
+
+            try:
+                with Image.open(io.BytesIO(image_bytes)) as image:
+                    image.verify()
+
+                with Image.open(io.BytesIO(image_bytes)) as image:
+                    preview_image = image.convert("RGB")
+
+                valid_files.append((
+                    uploaded_file.name,
+                    image_bytes,
+                ))
+
+                with preview_columns[index % 2]:
+                    st.image(
+                        preview_image,
+                        caption=uploaded_file.name,
+                        use_container_width=True,
+                    )
+
+            except Exception:
+                with preview_columns[index % 2]:
+                    st.error(
+                        f"{uploaded_file.name} is not a valid image."
+                    )
+
+        st.caption(
+            f"{len(valid_files)} valid image(s) ready for submission."
+        )
+
+    st.info(
+        "All images in one batch must belong to the same crop and disease "
+        "class. You can submit another batch for a different class."
+    )
+
     if st.button(
-        "Submit Image for Review",
+        "Submit Images for Review",
         type="primary",
-        disabled=uploaded_file is None,
-        key="submit_training_image",
+        disabled=not valid_files,
+        key="submit_training_images",
     ):
 
         try:
-            image_id = save_uploaded_image(
-                image_bytes=image_bytes,
-                original_filename=uploaded_file.name,
-                crop=selected_class["crop"],
-                disease=selected_class["disease"],
-                class_name=selected_class["class_name"],
-                label_index=selected_class["index"],
+            with st.spinner(
+                f"Uploading {len(valid_files)} image(s) to LeafLens..."
+            ):
+
+                response = upload_images_api(
+                    files=valid_files,
+                    crop=selected_class["raw_crop"],
+                    disease=selected_class["raw_disease"],
+                )
+
+            total_files = response.get("total_files", len(valid_files))
+            successful = response.get("successful_uploads", 0)
+            failed = response.get("failed_uploads", 0)
+
+            st.divider()
+            st.subheader("Upload Summary")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric("Total Images", total_files)
+
+            with col2:
+                st.metric("Successfully Uploaded", successful)
+
+            with col3:
+                st.metric("Failed Uploads", failed)
+
+            st.divider()
+
+            st.markdown("### Submission Details")
+
+            st.write(
+                f"**Crop:** {selected_class['crop']}  \n"
+                f"**Disease:** {selected_class['disease']}"
             )
 
-            st.success(
-                f"Image successfully submitted! Reference ID: {image_id}"
-            )
+            for item in response.get("results", []):
 
-        except ValueError as error:
-            st.warning(str(error))
+                filename = item.get(
+                    "filename",
+                    "Unknown image",
+                )
+
+                status = item.get("status", "unknown")
+
+                with st.container(border=True):
+
+                    col1, col2 = st.columns([3, 1])
+
+                    with col1:
+                        st.write(f"**{filename}**")
+
+                        if item.get("image_id") is not None:
+                            st.caption(
+                                f"Reference ID: {item['image_id']}"
+                            )
+
+                        # The API returns "reason", not "error".
+                        reason = item.get("reason")
+
+                        if reason:
+                            st.caption(f"Reason: {reason}")
+
+                    with col2:
+
+                        if status == "uploaded":
+                            st.success("Uploaded")
+
+                        else:
+                            st.error(
+                                status.replace("_", " ").title()
+                            )
+
+            if successful > 0:
+
+                st.success(
+                    f"{successful} image(s) successfully submitted."
+                )
+
+                st.info(
+                    "Your images are now waiting for review. "
+                    "Visit the Review & Approve tab to inspect and "
+                    "approve them before retraining."
+                )
+
+            if failed > 0:
+                st.warning(
+                    f"{failed} image(s) could not be uploaded. "
+                    "Check their failure reasons above."
+                )
+
+        except APIClientError as error:
+            st.error(f"Image upload failed: {error}")
 
         except Exception as error:
-            st.error(f"Could not save image: {error}")
+            st.error(f"Unexpected upload error: {error}")
 
+
+# IMAGE REVIEW SECTION
 
 def render_review_section():
     """Allow users to review and approve uploaded images."""
@@ -194,17 +304,13 @@ def render_review_section():
                 )
 
             with col2:
+
                 st.markdown(
                     f"**{record['original_filename']}**"
                 )
 
-                st.write(
-                    f"Crop: {record['crop']}"
-                )
-
-                st.write(
-                    f"Label: {record['disease']}"
-                )
+                st.write(f"Crop: {record['crop']}")
+                st.write(f"Label: {record['disease']}")
 
                 st.caption(
                     f"Image ID: {record['id']} | "
@@ -219,11 +325,13 @@ def render_review_section():
                 approve_col, reject_col = st.columns(2)
 
                 with approve_col:
+
                     if st.button(
                         "Approve",
                         key=f"approve_{record['id']}",
                         type="primary",
                     ):
+
                         try:
                             update_image_status(
                                 record["id"],
@@ -238,10 +346,12 @@ def render_review_section():
                             st.error(str(error))
 
                 with reject_col:
+
                     if st.button(
                         "Reject",
                         key=f"reject_{record['id']}",
                     ):
+
                         try:
                             update_image_status(
                                 record["id"],
@@ -272,8 +382,10 @@ def render_review_section():
         st.info("No approved images yet.")
 
 
+# RETRAINING SECTION
+
 def render_training_section():
-    """Train a candidate model using approved new images."""
+    """Start and monitor retraining through the FastAPI service."""
 
     st.subheader("Retrain Model")
 
@@ -299,87 +411,223 @@ def render_training_section():
         "are excluded from training."
     )
 
+    # The API accepts epochs between 1 and 50.
     epochs = st.number_input(
         "Maximum training epochs",
         min_value=1,
-        max_value=20,
+        max_value=50,
         value=5,
         step=1,
         help="Early stopping can end training before this limit.",
+        key="retraining_epochs",
     )
 
+    current_job_id = st.session_state.get(
+        "retraining_job_id"
+    )
+
+    current_status = st.session_state.get(
+        "retraining_job_status"
+    )
+
+    # Start a new retraining job.
     if st.button(
         "Start Model Retraining",
         type="primary",
-        disabled=approved_count == 0,
+        disabled=(
+            approved_count == 0
+            or current_status in ("queued", "running")
+        ),
         key="start_retraining",
     ):
 
         try:
             with st.spinner(
-                "Loading original dataset and approved images..."
+                "Submitting retraining request to LeafLens..."
             ):
 
-                data = load_retraining_data()
-
-                training_dataset = create_training_dataset(
-                    original_train=data["train"],
-                    approved_images=data["approved_images"],
-                    approved_labels=data["approved_labels"],
+                response = start_retraining_api(
+                    epochs=int(epochs)
                 )
 
-                validation_dataset = create_evaluation_dataset(
-                    data["validation"]
-                )
+            st.session_state["retraining_job_id"] = response["job_id"]
 
-                test_dataset = create_evaluation_dataset(
-                    data["test"]
-                )
+            st.session_state["retraining_job_status"] = response.get(
+                "status",
+                "queued",
+            )
 
-            with st.spinner(
-                "Training candidate model. This may take some time..."
-            ):
+            st.session_state["retraining_completed"] = False
 
-                model, history, candidate_path = train_retraining_model(
-                    training_dataset=training_dataset,
-                    validation_dataset=validation_dataset,
-                    epochs=int(epochs),
-                )
+            st.session_state.pop("retraining_metrics", None)
+            st.session_state.pop("candidate_path", None)
 
-            with st.spinner(
-                "Evaluating candidate model on the untouched test dataset..."
-            ):
+            st.success("Retraining job successfully submitted.")
 
-                metrics = evaluate_retrained_model(
-                    model,
-                    test_dataset,
-                )
+            st.rerun()
 
-            st.session_state["retraining_metrics"] = metrics
-            st.session_state["candidate_path"] = str(candidate_path)
-            st.session_state["retraining_completed"] = True
+        except APIClientError as error:
+            st.error(f"Could not start retraining: {error}")
+
+        except (KeyError, TypeError) as error:
+            st.error(
+                f"The API returned an unexpected response: {error}"
+            )
+
+    # Monitor an existing job.
+    current_job_id = st.session_state.get(
+        "retraining_job_id"
+    )
+
+    if current_job_id:
+
+        st.divider()
+        st.markdown("**Retraining Progress**")
+
+        current_status = st.session_state.get(
+            "retraining_job_status",
+            "unknown",
+        )
+
+        if current_status in ("queued", "running"):
+
+            st.info(
+                "Your candidate model is being trained in the background."
+            )
+
+        elif current_status == "completed":
 
             st.success(
                 "Retraining and evaluation completed successfully!"
             )
 
+        elif current_status == "failed":
+
+            st.error(
+                "The retraining job failed. Check the API server logs "
+                "for more information."
+            )
+
+        else:
+            st.write(
+                f"Current status: **{current_status.title()}**"
+            )
+
+        if current_status in ("queued", "running"):
+
+            st.caption(
+                "Training is running in the API background process. "
+                "Refresh the status to check the latest update."
+            )
+
+        if st.button(
+            "Refresh Retraining Status",
+            key="refresh_retraining_status",
+        ):
+
+            try:
+                with st.spinner("Checking retraining status..."):
+
+                    status_response = get_retraining_status_api(
+                        current_job_id
+                    )
+
+                job_status = status_response.get(
+                    "status",
+                    "unknown",
+                )
+
+                st.session_state["retraining_job_status"] = job_status
+
+                if job_status == "completed":
+
+                    metrics = status_response.get("metrics")
+
+                    if metrics:
+                        st.session_state["retraining_metrics"] = metrics
+
+                    candidate_path = status_response.get(
+                        "candidate_model_path"
+                    )
+
+                    if candidate_path:
+                        st.session_state["candidate_path"] = str(
+                            candidate_path
+                        )
+
+                    st.session_state["retraining_completed"] = True
+
+                elif job_status == "failed":
+
+                    st.session_state["retraining_error"] = (
+                        status_response.get(
+                            "message",
+                            "The retraining process failed.",
+                        )
+                    )
+
+                st.session_state["retraining_job_message"] = (
+                    status_response.get("message", "")
+                )
+
+                st.rerun()
+
+            except APIClientError as error:
+                st.error(
+                    f"Could not retrieve retraining status: {error}"
+                )
+
+            except Exception as error:
+                st.error(
+                    f"Unexpected status response: {error}"
+                )
+
+        # Display the latest message returned by the API.
+        job_message = st.session_state.get(
+            "retraining_job_message"
+        )
+
+        if job_message:
+            st.caption(job_message)
+
+        if current_status == "failed":
+
+            error_message = st.session_state.get(
+                "retraining_error",
+                "Please check the API logs.",
+            )
+
+            st.error(error_message)
+
+            if st.button(
+                "Clear Failed Job",
+                key="clear_failed_job",
+            ):
+
+                st.session_state.pop("retraining_job_id", None)
+                st.session_state.pop("retraining_job_status", None)
+                st.session_state.pop("retraining_job_message", None)
+                st.session_state.pop("retraining_error", None)
+
+                st.rerun()
+
+        elif current_status == "completed":
+
+            st.success(
+                "The candidate model is ready for evaluation."
+            )
+
             st.info(
-                "Your production model has not been changed. "
+                "The production model has not been changed. "
                 "The new model is saved separately as a candidate."
             )
 
-            st.write(f"Candidate model: `{candidate_path}`")
-
             st.caption(
-                "Open the Evaluation section to compare the candidate "
-                "against the current production model."
+                "Open the Evaluation tab to compare both models."
             )
 
-        except Exception as error:
-            st.error("The retraining process failed.")
-            st.exception(error)
 
-
+# MODEL EVALUATION SECTION
 def render_evaluation_section():
     """Compare candidate metrics with the production model."""
 
@@ -398,7 +646,8 @@ def render_evaluation_section():
 
         st.info(
             "No candidate evaluation is available yet. "
-            "Approve at least one image and complete retraining first."
+            "Approve at least one image, complete retraining, "
+            "and refresh the job status."
         )
 
         return
@@ -425,18 +674,15 @@ def render_evaluation_section():
         candidate_value = candidate_metrics[key]
         production_value = PRODUCTION_METRICS[key]
 
-        difference = candidate_value - production_value
-
-        if not higher_is_better:
-            difference = -difference
-
         with metrics_columns[index % 3]:
 
             st.metric(
                 label,
                 f"{candidate_value:.4f}",
                 delta=f"{candidate_value - production_value:+.4f}",
-                delta_color="normal" if higher_is_better else "inverse",
+                delta_color=(
+                    "normal" if higher_is_better else "inverse"
+                ),
             )
 
     st.divider()
@@ -451,6 +697,17 @@ def render_evaluation_section():
         ("Macro F1-score", "f1_score"),
         ("Weighted F1-score", "weighted_f1_score"),
     ]
+
+    header1, header2, header3 = st.columns([2, 1, 1])
+
+    with header1:
+        st.write("**Metric**")
+
+    with header2:
+        st.write("**Production**")
+
+    with header3:
+        st.write("**Candidate**")
 
     for label, key in comparison_rows:
 
@@ -518,6 +775,7 @@ def render_evaluation_section():
         st.write(f"Saved candidate artifact: `{candidate_path}`")
 
 
+# MAIN RETRAINING PAGE
 def render_retraining_page():
     """Render the complete LeafLens model retraining page."""
 
@@ -530,11 +788,14 @@ def render_retraining_page():
 
     try:
         initialize_database()
+
         class_names = load_class_names()
         class_details = get_class_details(class_names)
 
     except Exception as error:
-        st.error(f"Could not initialize the retraining page: {error}")
+        st.error(
+            f"Could not initialize the retraining page: {error}"
+        )
         return
 
     upload_tab, review_tab, training_tab, evaluation_tab = st.tabs([
@@ -555,3 +816,7 @@ def render_retraining_page():
 
     with evaluation_tab:
         render_evaluation_section()
+
+
+if __name__ == "__main__":
+    render_retraining_page()
