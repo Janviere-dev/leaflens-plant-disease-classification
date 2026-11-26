@@ -123,10 +123,7 @@ def render_insights_page():
     )
 
 
-    st.markdown(
-        '<p class="main-title">Dataset Insights 📊</p>',
-        unsafe_allow_html=True
-    )
+    st.title("Dataset Insights")
 
     st.markdown(
         '<p class="main-subtitle">'
