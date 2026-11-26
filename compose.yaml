@@ -7,7 +7,7 @@ services:
     container_name: leaflens-api
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       PYTHONUNBUFFERED: "1"
     volumes:
@@ -31,7 +31,7 @@ services:
     container_name: leaflens-streamlit
     restart: unless-stopped
     ports:
-      - "8502:8501"
+      - "127.0.0.1:8502:8501"
     environment:
       LEAFLENS_API_URL: "http://api:8000"
       STREAMLIT_SERVER_HEADLESS: "true"

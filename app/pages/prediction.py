@@ -20,7 +20,7 @@ def render_prediction_page():
 
     st.info(
         "LeafLens automatically identifies the crop and predicts its "
-        "condition. No manual crop selection is required."
+        "condition. No more guessing what's wrong with your plants."
     )
 
     uploaded_file = st.file_uploader(

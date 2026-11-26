@@ -769,10 +769,10 @@ def render_evaluation_section():
         "deployment. The production model remains unchanged."
     )
 
-    candidate_path = st.session_state.get("candidate_path")
+    # candidate_path = st.session_state.get("candidate_path")
 
-    if candidate_path:
-        st.write(f"Saved candidate artifact: `{candidate_path}`")
+    # if candidate_path:
+    #     st.write(f"Saved candidate artifact: `{candidate_path}`")
 
 
 # MAIN RETRAINING PAGE

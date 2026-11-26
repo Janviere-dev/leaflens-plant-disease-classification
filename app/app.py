@@ -149,9 +149,7 @@ with st.sidebar:
             "Dashboard",
             "Disease Detection",
             "Dataset Insights",
-            "Model Retraining",
-            "Model Performance"
-        ],
+            "Model Retraining"        ],
         label_visibility="collapsed"
     )
 
@@ -164,10 +162,7 @@ with st.sidebar:
 
 if page == "Dashboard":
 
-    st.markdown(
-        '<p class="main-title">Welcome to LeafLens 🌱</p>',
-        unsafe_allow_html=True
-    )
+    st.title("Welcome to LeafLens 🌱")
 
     st.markdown(
         '<p class="main-subtitle">'
@@ -265,7 +260,3 @@ elif page == "Dataset Insights":
 
 elif page == "Model Retraining":
     render_retraining_page()
-    
-elif page == "Model Performance":
-    st.title("📈 Model Performance")
-    st.info("Model performance page is under development.")

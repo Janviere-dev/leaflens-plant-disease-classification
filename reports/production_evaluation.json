@@ -1,0 +1,19 @@
+{
+    "model": "leaflens_final_model.keras",
+    "architecture": "MobileNetV2",
+    "dataset": "data/plantvillage",
+    "split": "test",
+    "test_samples": 10709,
+    "num_classes": 38,
+    "batch_size": 32,
+    "accuracy": 0.9610607899897282,
+    "macro_precision": 0.9480300085739453,
+    "macro_recall": 0.9556480668955796,
+    "macro_f1": 0.9506409038210727,
+    "weighted_precision": 0.9619484770907586,
+    "weighted_recall": 0.9610607899897282,
+    "weighted_f1": 0.9605916847359044,
+    "preprocessing_seconds": 34.3523713270115,
+    "model_inference_seconds": 248.81852953387715,
+    "average_model_inference_ms_per_image": 23.234525122222166
+}
