@@ -245,7 +245,7 @@ Hugging Face Datasets format at:
 data/plantvillage/
 ```
 
-Obtain or prepare the dataset in that location before running notebook
+Obtain the dataset from Google Drive  https://drive.google.com/drive/folders/1_TyBiz4jdtag6pswxpfj3hjlJxVKMBzQ?usp=sharing before running notebook
 evaluation or scripts that load the saved dataset. The full dataset is
 excluded from Git because of its size.
 
