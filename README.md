@@ -430,44 +430,7 @@ For a presentation, show the retraining steps and the status or output
 produced by the workflow. Explain how evaluation results are used to
 decide whether a candidate is suitable for deployment.
 
-## 11. Presentation checklist
-
-For a clear, user-friendly demonstration, keep the camera on and narrate
-the steps:
-
-1.  **Introduction (30--45 seconds):** introduce LeafLens, the
-    plant-disease problem, and the purpose of the project.
-2.  **Open the live application (30 seconds):** show the public URL and
-    briefly identify the main pages.
-3.  **Single-image prediction (1--2 minutes):** upload a leaf image, run
-    prediction, and explain the predicted class and displayed result.
-4.  **Bulk workflow (1 minute):** demonstrate the multi-image upload
-    workflow if enabled, and explain how the application handles
-    multiple images.
-5.  **Insights and evaluation (1 minute):** show dataset/model insights
-    and explain accuracy, precision, recall, F1-score, and the confusion
-    matrix in plain language.
-6.  **Retraining workflow (1--2 minutes):** show how a retraining run is
-    initiated, what candidate output is produced, and how
-    review/approval is handled. Explain that a candidate is evaluated
-    before production use.
-7.  **API demonstration (45 seconds):** open Swagger at `/api/docs`,
-    show the health endpoint and a prediction request.
-8.  **Docker and load testing (1--2 minutes):** explain the
-    containerized services, show Locust, and discuss the measured
-    results for different replica counts.
-9.  **Conclusion (20--30 seconds):** summarize what works, the
-    evaluation results, and the next improvement.
-
-Before recording: - Test the public application and API documentation. -
-Prepare a few clear leaf images for prediction. - Make sure the model
-and dataset assets required by the demonstrated workflows are
-available. - Run the load tests and replace every `TO FILL` value in
-this README with actual measurements. - Replace the YouTube placeholder
-with the published video URL. - Keep the camera on and ensure the
-screen, voice, and results are readable.
-
-## 12. Limitations and responsible use
+## 11. Limitations and responsible use
 
 LeafLens is an image-classification demonstration, not a substitute for
 expert agronomic diagnosis. Image quality, lighting, plant variety,
