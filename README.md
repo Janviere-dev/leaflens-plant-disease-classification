@@ -1,4 +1,4 @@
-# LeafLens Plant Disease Classification & MLOps
+# LeafLens Plant Disease Classification and MLOps
 
 LeafLens is an end-to-end plant disease classification application. A
 user uploads a leaf image through the Streamlit interface, and a
@@ -9,7 +9,7 @@ load-testing setup.
 
 ## 1. Demo video
 
-**YouTube demonstration:** `ADD_YOUR_YOUTUBE_VIDEO_LINK_HERE`
+**YouTube demonstration:** `https://youtu.be/LT5_nvY3BaE`
 
 ## 2. Application URLs
 
@@ -223,7 +223,7 @@ cd leaflens-plant-disease-classification
 ### 7.2 Provide the model artifacts
 
 The trained model and its supporting metadata are not stored in this Git
-repository. Obtain the project model artifact from google drive[] and place the files in the directory
+repository. Obtain the project model artifact from google drive: https://drive.google.com/drive/folders/1_TyBiz4jdtag6pswxpfj3hjlJxVKMBzQ?usp=sharing  and place the files in the directory
 expected by the model loader:
 
 ``` text
