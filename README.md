@@ -9,7 +9,7 @@ load-testing setup.
 
 ## 1. Demo video
 
-**YouTube demonstration:** `https://youtu.be/LT5_nvY3BaE`
+**YouTube demonstration:** https://youtu.be/lm-xFtCG3vE
 
 ## 2. Application URLs
 
